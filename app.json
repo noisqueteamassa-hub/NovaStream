@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "NovaStream",
+    "slug": "novastream",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "novastream",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.novastream.music",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false,
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
+  }
+}
