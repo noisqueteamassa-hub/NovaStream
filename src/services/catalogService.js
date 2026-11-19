@@ -9,6 +9,7 @@ function normalizeTrack(item, source = 'catalog') {
     album: String(item.album || ''),
     artworkUrl: item.artworkUrl || item.cover_url || null,
     streamUrl: item.streamUrl || item.stream_url || null,
+    downloadUrl: item.downloadUrl || item.download_url || null,
     duration: Number(item.duration || 0),
     source: item.source || source,
     downloadable: item.downloadable === true,
