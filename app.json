@@ -22,6 +22,12 @@
           "enableBackgroundRecording": false,
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
       ]
     ]
   }
