@@ -12,15 +12,17 @@ Player de música gratuito, sem anúncios e sem planos pagos, com identidade vis
 - Todos os recursos do aplicativo serão gratuitos.
 
 ## Estado da implementação
-O APK inicial foi compilado e instalado pelo usuário. O repositório agora contém:
-- Interface de início, busca com integração ao endpoint do catálogo e biblioteca de favoritos.
+O APK inicial foi compilado e instalado pelo usuário. A implementação atual inclui:
+- Interface de início, busca do catálogo configurado, favoritos e biblioteca.
+- Player compartilhado com reprodução de URLs HTTPS autorizadas, pausa/retomada, avanço/retrocesso, busca na linha do tempo e fila.
+- Configuração de áudio para reprodução em segundo plano via expo-audio; o comportamento precisa ser validado em aparelho Android real.
+- Tela de configurações com qualidade preferida, limite desejado de cache e escolha de memória interna.
+- Preferências persistidas localmente.
 - Serviço normalizador do catálogo e registro de provedores externos autorizados.
-- Política de streaming com qualidade alta padrão e fallback adaptativo.
 - Banco SQLite para metadados de downloads e favoritos.
-- Armazenamento de chave no Android Keystore por meio do Expo SecureStore.
-- Contrato para criptografia nativa AES-GCM em blocos e gerenciador de downloads com validação de licença.
+- Armazenamento seguro de chave pelo Expo SecureStore.
 
-Ainda NÃO estão concluídos: servidor/API real do catálogo, conectores de provedores externos, player funcional integrado à interface, execução em segundo plano testada, criptografia nativa em blocos, download offline completo, seletor SAF para cartão SD, gerenciamento real do limite de cache e telas de configurações completas. O gerenciador de downloads bloqueia a operação enquanto o adaptador nativo de criptografia não estiver disponível; isso evita salvar faixas como arquivos desprotegidos ou alegar que já existe proteção que ainda não foi implementada.
+Ainda NÃO estão concluídos: servidor/API real do catálogo, conectores externos concretos, criptografia nativa AES-GCM em blocos, download offline completo, seletor SAF para cartão SD e limpeza automática efetiva do cache. A qualidade e o limite de cache são preferências salvas; o servidor ainda precisa fornecer os fluxos na qualidade solicitada e o gerenciador de cache ainda precisa ser ligado aos arquivos reais. O gerenciador de downloads continua bloqueando a operação enquanto o adaptador nativo de criptografia não estiver disponível; isso evita salvar faixas desprotegidas.
 
 ## Contrato da API de catálogo
 Configure `EXPO_PUBLIC_CATALOG_API_URL` no ambiente de build. O app consulta:
