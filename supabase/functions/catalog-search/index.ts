@@ -13,6 +13,22 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function getPublishableKey(): string | null {
+  // Current Supabase projects expose named keys as a JSON object.
+  const namedKeys = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS');
+  if (namedKeys) {
+    try {
+      const parsed = JSON.parse(namedKeys);
+      if (typeof parsed.default === 'string') return parsed.default;
+      const first = Object.values(parsed).find((value) => typeof value === 'string');
+      if (typeof first === 'string') return first;
+    } catch {
+      // Fall through to legacy/single-key environment variables.
+    }
+  }
+  return Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || null;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'GET') return json({ error: 'Método não permitido.' }, 405);
@@ -22,7 +38,7 @@ Deno.serve(async (request: Request) => {
   if (term.length > 100) return json({ error: 'A pesquisa deve ter até 100 caracteres.' }, 400);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const publicKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
+  const publicKey = getPublishableKey();
   if (!supabaseUrl || !publicKey) {
     return json({ error: 'O servidor do catálogo ainda não foi configurado.' }, 503);
   }
