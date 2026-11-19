@@ -33,7 +33,23 @@ export function PlayerProvider({ children }) {
       setQueueIndex(index);
       setCurrentTrack(track);
       setError('');
-      player.replace({ uri: url.toString(), name: track.title, artist: track.artist || 'Artista desconhecido' });
+
+      // A sessão de mídia e os controles da tela bloqueada mantêm o serviço ativo no Android.
+      player.setActiveForLockScreen(true, {
+        title: track.title,
+        artist: track.artist || 'Artista desconhecido',
+        albumTitle: track.album || 'NovaStream',
+        ...(track.artworkUrl ? { artworkUrl: track.artworkUrl } : {}),
+      }, {
+        showNextTrack: index < list.length - 1,
+        showPreviousTrack: index > 0,
+      });
+
+      player.replace({
+        uri: url.toString(),
+        name: track.title,
+        artist: track.artist || 'Artista desconhecido',
+      });
       player.play();
     } catch (reason) {
       setError(reason?.message || 'Não foi possível iniciar a reprodução.');
@@ -57,9 +73,7 @@ export function PlayerProvider({ children }) {
 
   function next() {
     if (queueIndex >= 0 && queueIndex < queue.length - 1) {
-      const index = queueIndex + 1;
-      setQueueIndex(index);
-      playTrack(queue[index], queue);
+      playTrack(queue[queueIndex + 1], queue);
     }
   }
 
@@ -68,11 +82,7 @@ export function PlayerProvider({ children }) {
       player.seekTo(0);
       return;
     }
-    if (queueIndex > 0) {
-      const index = queueIndex - 1;
-      setQueueIndex(index);
-      playTrack(queue[index], queue);
-    }
+    if (queueIndex > 0) playTrack(queue[queueIndex - 1], queue);
   }
 
   const value = useMemo(() => ({
