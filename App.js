@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput,
   ActivityIndicator, Alert,
@@ -81,49 +82,94 @@ function TrackRow({ track, onFavorite, favorite, onPlay }) {
   </View>;
 }
 
+const SEARCH_HISTORY_KEY = 'novastream.search.history.v1';
+const SEARCH_GENRES = ['Todos', 'Pop', 'Rock', 'Rap', 'Hip-Hop', 'Funk', 'Eletrônica', 'Jazz', 'Clássica', 'Instrumental'];
+
 function SearchScreen() {
   const [query,setQuery]=useState('');
   const [results,setResults]=useState([]);
   const [loading,setLoading]=useState(false);
   const [searched,setSearched]=useState(false);
   const [favorites,setFavorites]=useState([]);
+  const [selectedGenre,setSelectedGenre]=useState('Todos');
+  const [history,setHistory]=useState([]);
   const { playTrack }=usePlayer();
-  useEffect(()=>{getFavorites().then(setFavorites).catch(()=>{});},[]);
-  async function runSearch(){
-    if(!query.trim())return;
+
+  useEffect(()=>{
+    getFavorites().then(setFavorites).catch(()=>{});
+    AsyncStorage.getItem(SEARCH_HISTORY_KEY).then((raw)=>{
+      const saved=raw?JSON.parse(raw):[];
+      if(Array.isArray(saved))setHistory(saved.slice(0,8));
+    }).catch(()=>{});
+  },[]);
+
+  async function runSearch(searchText=query, genreFilter=selectedGenre){
+    const term=String(searchText||'').trim();
+    if(!term && genreFilter==='Todos')return;
     setLoading(true);setSearched(true);
     try{
-      const items=await searchAllSources(query.trim());
+      const items=await searchAllSources(term,{genre:genreFilter});
       setResults(items);
-      if(!items.length)Alert.alert('Nenhum resultado',isCatalogConfigured()?'Não encontramos resultados nas fontes conectadas.':'O servidor do catálogo ainda não foi configurado.');
-    }catch(error){Alert.alert('Erro na busca',error.message||'Não foi possível pesquisar agora.');}
-    finally{setLoading(false);}
+      const label=term || genreFilter;
+      if(label){
+        const next=[label,...history.filter((item)=>item.toLowerCase()!==label.toLowerCase())].slice(0,8);
+        setHistory(next);
+        AsyncStorage.setItem(SEARCH_HISTORY_KEY,JSON.stringify(next)).catch(()=>{});
+      }
+    }catch(error){
+      Alert.alert('Erro na busca',error.message||'Não foi possível pesquisar agora.');
+    }finally{setLoading(false);}
   }
+
+  async function clearHistory(){
+    setHistory([]);
+    await AsyncStorage.removeItem(SEARCH_HISTORY_KEY).catch(()=>{});
+  }
+
   async function favorite(track){
     try{setFavorites(await toggleFavorite(track));}
     catch{Alert.alert('Erro','Não foi possível atualizar os favoritos.');}
   }
+
   return <View style={styles.screen}>
-    <View style={styles.searchHeader}><Text style={styles.pageTitle}>Buscar</Text>
-      <Text style={styles.pageDescription}>Músicas, artistas e álbuns do catálogo autorizado.</Text>
-      <View style={styles.searchBox}><Ionicons name="search-outline" size={20} color={COLORS.muted}/>
-        <TextInput value={query} onChangeText={setQuery} onSubmitEditing={runSearch} placeholder="O que você quer ouvir?"
+    <View style={styles.searchHeader}>
+      <Text style={styles.pageTitle}>Buscar</Text>
+      <Text style={styles.pageDescription}>Pesquise faixas por nome, artista, álbum ou gênero em várias fontes.</Text>
+      <View style={styles.searchBox}>
+        <Ionicons name="search-outline" size={20} color={COLORS.muted}/>
+        <TextInput value={query} onChangeText={setQuery} onSubmitEditing={()=>runSearch()} placeholder="O que você quer ouvir?"
           placeholderTextColor={COLORS.muted} returnKeyType="search" style={styles.searchInput}/>
         {query.length>0?<Pressable onPress={()=>{setQuery('');setResults([]);setSearched(false);}}><Ionicons name="close-circle" size={19} color={COLORS.muted}/></Pressable>:null}
       </View>
-      <Pressable style={styles.searchButton} onPress={runSearch} disabled={loading}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.genreScroller} contentContainerStyle={styles.genreList}>
+        {SEARCH_GENRES.map((genre)=><Pressable key={genre} onPress={()=>setSelectedGenre(genre)}
+          style={[styles.genreChip,selectedGenre===genre&&styles.genreChipSelected]}>
+          <Text style={[styles.genreChipText,selectedGenre===genre&&styles.genreChipTextSelected]}>{genre}</Text>
+        </Pressable>)}
+      </ScrollView>
+      <Pressable style={styles.searchButton} onPress={()=>runSearch()} disabled={loading}>
         {loading?<ActivityIndicator color="#07110B"/>:<Text style={styles.searchButtonText}>Pesquisar</Text>}
       </Pressable>
+      <Text style={styles.searchHint}>Dica: use artist:nome, album:nome, track:nome ou genre:estilo.</Text>
     </View>
     <ScrollView contentContainerStyle={{paddingHorizontal:20,paddingBottom:110}}>
+      {!searched&&history.length>0?<View style={styles.historyBlock}>
+        <View style={styles.historyHeader}><Text style={styles.historyTitle}>Pesquisas recentes</Text>
+          <Pressable onPress={clearHistory}><Text style={styles.clearHistory}>Limpar</Text></Pressable></View>
+        {history.map((item)=><Pressable key={item} style={styles.historyRow} onPress={()=>{setQuery(item);runSearch(item);}}>
+          <Ionicons name="time-outline" size={17} color={COLORS.muted}/>
+          <Text style={styles.historyText}>{item}</Text>
+          <Ionicons name="arrow-up-left" size={16} color={COLORS.muted}/>
+        </Pressable>)}
+      </View>:null}
+      {results.length>0?<Text style={styles.resultCount}>{results.length} faixas encontradas</Text>:null}
       {results.map((track,index)=><TrackRow key={track.id+'-'+track.source+'-'+index} track={track}
         favorite={favorites.some(item=>item.id===track.id)} onFavorite={()=>favorite(track)}
         onPlay={()=>playTrack(track,results)}/>)}
-      {searched&&!loading&&results.length===0?<Text style={styles.emptyMessage}>Nenhuma música encontrada.</Text>:null}
+      {searched&&!loading&&results.length===0?<Text style={styles.emptyMessage}>Nenhuma faixa encontrada. Experimente outro termo ou gênero.</Text>:null}
     </ScrollView>
   </View>;
 }
-
 function LibraryScreen() {
   const [favorites,setFavorites]=useState([]);
   const [loaded,setLoaded]=useState(false);
@@ -250,6 +296,20 @@ const styles=StyleSheet.create({
   searchInput:{flex:1,color:COLORS.text,fontSize:14},
   searchButton:{backgroundColor:COLORS.green,borderRadius:12,alignItems:'center',justifyContent:'center',height:44,marginTop:12},
   searchButtonText:{color:'#07110B',fontSize:14,fontWeight:'800'},
+  genreScroller:{marginTop:13,maxHeight:38},
+  genreList:{gap:8,paddingRight:10},
+  genreChip:{paddingHorizontal:13,paddingVertical:8,borderRadius:20,backgroundColor:COLORS.surfaceLight,borderWidth:1,borderColor:COLORS.border},
+  genreChipSelected:{backgroundColor:'#173C29',borderColor:COLORS.green},
+  genreChipText:{color:COLORS.muted,fontSize:11,fontWeight:'600'},
+  genreChipTextSelected:{color:COLORS.green},
+  searchHint:{color:COLORS.muted,fontSize:10,marginTop:9},
+  historyBlock:{marginBottom:16},
+  historyHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:8},
+  historyTitle:{color:COLORS.text,fontSize:14,fontWeight:'700'},
+  clearHistory:{color:COLORS.green,fontSize:11,fontWeight:'700'},
+  historyRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:11,borderBottomWidth:1,borderBottomColor:COLORS.border},
+  historyText:{color:COLORS.text,fontSize:13,flex:1},
+  resultCount:{color:COLORS.muted,fontSize:11,marginBottom:6,marginTop:6},
   trackRow:{flexDirection:'row',alignItems:'center',paddingVertical:12,borderBottomWidth:1,borderBottomColor:COLORS.border,gap:12},
   cover:{width:48,height:48,borderRadius:9,backgroundColor:COLORS.surfaceLight,alignItems:'center',justifyContent:'center'},
   trackText:{flex:1},trackTitle:{color:COLORS.text,fontSize:14,fontWeight:'700'},
