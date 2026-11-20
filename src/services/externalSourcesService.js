@@ -1,27 +1,32 @@
 import { searchCatalog } from './catalogService';
 import { openverseProvider } from './openverseProvider';
+import { jamendoProvider } from './jamendoProvider';
 
-// Fontes externas só entram aqui quando oferecem API oficial e autorizam
-// descoberta de conteúdo com licença aberta. Não extraímos áudio de plataformas.
-const providers = [openverseProvider];
-
-export function registerAuthorizedProvider(provider) {
-  if (!provider || typeof provider.search !== 'function' || !provider.id) {
-    throw new Error('Provedor inválido.');
-  }
-  if (providers.some((item) => item.id === provider.id)) return;
-  providers.push(provider);
-}
+// Só registramos fontes com API oficial de busca e regras de uso identificáveis.
+const providers = [jamendoProvider, openverseProvider];
 
 export async function searchAllSources(query, options = {}) {
-  const tasks = [searchCatalog(query, options)];
-  providers.forEach((provider) => {
-    tasks.push(Promise.resolve(provider.search(query, options)));
+  const tasks = [
+    searchCatalog(query, options),
+    ...providers.map((provider) => Promise.resolve().then(() => provider.search(query, options))),
+  ];
+  const settled = await Promise.allSettled(tasks);
+  const combined = settled.flatMap((result) =>
+    result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []
+  );
+
+  // Evita duplicatas quando a mesma faixa aparece em mais de uma fonte.
+  const seen = new Set();
+  return combined.filter((track) => {
+    const key = `${String(track.title || '').trim().toLowerCase()}::${String(track.artist || '').trim().toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-  const results = await Promise.allSettled(tasks);
-  return results.flatMap((result) => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []);
 }
 
 export function getAuthorizedProviders() {
-  return providers.map(({ id, name }) => ({ id, name }));
+  return providers
+    .filter((provider) => typeof provider.isConfigured !== 'function' || provider.isConfigured())
+    .map(({ id, name }) => ({ id, name }));
 }
