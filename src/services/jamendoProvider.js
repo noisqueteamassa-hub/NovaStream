@@ -77,7 +77,6 @@ export const jamendoProvider = {
       if (!item.id || !item.name || !streamUrl || !sourceUrl) return [];
       const licenseUrl = httpsUrl(item.license_ccurl);
       const canDownload = item.audiodownload_allowed === true;
-      const downloadUrl = canDownload ? httpsUrl(item.audiodownload) : null;
       const tags = item.musicinfo?.tags?.genres || [];
 
       return [{
