@@ -1,8 +1,9 @@
 import { searchCatalog } from './catalogService';
+import { openverseProvider } from './openverseProvider';
 
 // Fontes externas só entram aqui quando oferecem API oficial e autorizam
-// descoberta/streaming. Não há extração de sites, DRM ou contorno de assinatura.
-const providers = [];
+// descoberta de conteúdo com licença aberta. Não extraímos áudio de plataformas.
+const providers = [openverseProvider];
 
 export function registerAuthorizedProvider(provider) {
   if (!provider || typeof provider.search !== 'function' || !provider.id) {
