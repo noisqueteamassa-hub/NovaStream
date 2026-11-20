@@ -13,6 +13,7 @@ jobs:
       EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       EXPO_PUBLIC_CATALOG_API_URL: ${{ vars.EXPO_PUBLIC_CATALOG_API_URL }}
+      EXPO_PUBLIC_JAMENDO_CLIENT_ID: ${{ vars.EXPO_PUBLIC_JAMENDO_CLIENT_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
