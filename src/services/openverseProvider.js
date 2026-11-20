@@ -1,9 +1,10 @@
-// Openverse agrega resultados de áudio com licenças abertas.
- // A busca não limita gêneros: consulta por texto em títulos, artistas e tags.
- // Só aceitamos licenças CC0, domínio público, CC BY e CC BY-SA.
- // A licença de cada faixa deve ser conferida na página de origem antes do uso.
+// Openverse agrega gravações e outros áudios com licenças abertas.
+// O filtro category=music evita misturar podcasts e efeitos sonoros nos resultados.
 const API_URL = 'https://api.openverse.org/v1/audio/';
-const ALLOWED_LICENSES = new Set(['cc0', 'pdm', 'by', 'by-sa']);
+const ALLOWED_LICENSES = new Set([
+  'cc0', 'pdm', 'by', 'by-sa', 'by-nd',
+  'by-nc', 'by-nc-sa', 'by-nc-nd',
+]);
 
 function safeHttps(value) {
   if (typeof value !== 'string') return null;
@@ -17,16 +18,18 @@ function safeHttps(value) {
 
 export const openverseProvider = {
   id: 'openverse',
-  name: 'Openverse (áudio com licenças abertas)',
-  async search(query, { signal } = {}) {
-    const term = String(query || '').trim();
+  name: 'Openverse (música com licenças abertas)',
+  async search(query, { signal, genre } = {}) {
+    const term = [String(query || '').trim(), genre && genre !== 'Todos' ? genre : '']
+      .filter(Boolean).join(' ').trim();
     if (!term) return [];
 
     const params = new URLSearchParams({
       q: term,
       page: '1',
       page_size: '20',
-      license: 'cc0,pdm,by,by-sa',
+      category: 'music',
+      license: [...ALLOWED_LICENSES].join(','),
       filter_dead: 'true',
       mature: 'false',
     });
@@ -35,9 +38,7 @@ export const openverseProvider = {
       signal,
       headers: { Accept: 'application/json' },
     });
-    if (!response.ok) {
-      throw new Error(`Openverse indisponível (${response.status}).`);
-    }
+    if (!response.ok) throw new Error(`Openverse indisponível (${response.status}).`);
 
     const payload = await response.json();
     const items = Array.isArray(payload?.results) ? payload.results : [];
@@ -49,7 +50,6 @@ export const openverseProvider = {
       if (!item.id || !item.title || !streamUrl || !sourceUrl || !ALLOWED_LICENSES.has(license)) {
         return [];
       }
-
       return [{
         id: `openverse:${item.id}`,
         title: String(item.title),
